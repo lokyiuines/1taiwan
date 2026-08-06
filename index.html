@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>台灣莫蘭迪旅遊助手</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Noto Sans TC -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        morandi: {
+                            bg: '#F4F6F8',
+                            card: '#FFFFFF',
+                            primary: '#6B829E',
+                            secondary: '#94A3B8',
+                            accent: '#D0D7DE',
+                            dark: '#334155',
+                            muted: '#64748B'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['"Noto Sans TC"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-200 flex justify-center items-center min-h-screen font-sans m-0">
+
+    <!-- 手機外框容器 -->
+    <div id="app" class="w-full max-w-md h-[100vh] sm:h-[850px] bg-morandi-bg sm:rounded-[40px] shadow-2xl flex flex-col overflow-hidden relative border-0 sm:border-8 sm:border-slate-800">
+        
+        <!-- 頂部狀態列 -->
+        <div class="bg-morandi-primary text-white px-6 py-4 flex justify-between items-center shadow-md">
+            <div>
+                <input v-model="tripTitle" type="text" class="bg-transparent text-lg font-bold tracking-wider text-white focus:outline-none border-b border-white/30 w-36" placeholder="旅程名稱">
+                <input v-model="tripDate" type="text" class="bg-transparent text-xs opacity-80 mt-0.5 focus:outline-none border-b border-white/20 w-36 block" placeholder="旅遊日期">
+            </div>
+            <div class="flex items-center space-x-3">
+                <button @click="currentTab = 'weather'" class="text-xs bg-white/20 px-2.5 py-1.5 rounded-full backdrop-blur-sm flex items-center space-x-1.5 hover:bg-white/35 transition">
+                    <i class="fa-solid fa-cloud-sun"></i>
+                    <span>{{ currentWeather.temp !== null ? currentWeather.temp + '°C' : '天氣' }}</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 主要內容區 (可滾動) -->
+        <div class="flex-1 overflow-y-auto pb-20">
+
+            <!-- 1. 行程表 Tab -->
+            <div v-if="currentTab === 'itinerary'" class="p-4 space-y-4">
+                
+                <!-- 去程航班設定卡片 -->
+                <div class="bg-morandi-card p-4 rounded-2xl shadow-sm border border-morandi-accent">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-bold text-morandi-primary bg-morandi-bg px-2 py-1 rounded-lg">
+                            <i class="fa-solid fa-plane-departure mr-1"></i> 去程航班
+                        </span>
+                        <input v-model="flightOut.no" type="text" class="text-xs text-right font-bold text-morandi-muted bg-transparent w-24 focus:outline-none border-b border-morandi-accent" placeholder="航班號">
+                    </div>
+                    <div class="flex justify-between items-center text-morandi-dark">
+                        <div class="text-center">
+                            <input v-model="flightOut.from" type="text" class="text-base font-bold text-center bg-transparent w-16 focus:outline-none border-b border-morandi-accent">
+                            <input v-model="flightOut.departureTime" type="text" class="text-xs text-morandi-muted text-center bg-transparent w-16 focus:outline-none mt-1">
+                        </div>
+                        <div class="flex-1 px-4 text-center">
+                            <div class="text-xs text-morandi-muted mb-1">直航</div>
+                            <div class="border-t border-dashed border-morandi-secondary relative">
+                                <i class="fa-solid fa-plane absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-1 text-xs text-morandi-primary"></i>
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <input v-model="flightOut.to" type="text" class="text-base font-bold text-center bg-transparent w-16 focus:outline-none border-b border-morandi-accent">
+                            <input v-model="flightOut.arrivalTime" type="text" class="text-xs text-morandi-muted text-center bg-transparent w-16 focus:outline-none mt-1">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 回程航班設定卡片 -->
+                <div class="bg-morandi-card p-4 rounded-2xl shadow-sm border border-morandi-accent">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-bold text-morandi-primary bg-morandi-bg px-2 py-1 rounded-lg">
+                            <i class="fa-solid fa-plane-arrival mr-1"></i> 回程航班
+                        </span>
+                        <input v-model="flightBack.no" type="text" class="text-xs text-right font-bold text-morandi-muted bg-transparent w-24 focus:outline-none border-b border-morandi-accent" placeholder="航班號">
+                    </div>
+                    <div class="flex justify-between items-center text-morandi-dark">
+                        <div class="text-center">
+                            <input v-model="flightBack.from" type="text" class="text-base font-bold text-center bg-transparent w-16 focus:outline-none border-b border-morandi-accent">
+                            <input v-model="flightBack.departureTime" type="text" class="text-xs text-morandi-muted text-center bg-transparent w-16 focus:outline-none mt-1">
+                        </div>
+                        <div class="flex-1 px-4 text-center">
+                            <div class="text-xs text-morandi-muted mb-1">直航</div>
+                            <div class="border-t border-dashed border-morandi-secondary relative">
+                                <i class="fa-solid fa-plane absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-1 text-xs text-morandi-primary rotate-180"></i>
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <input v-model="flightBack.to" type="text" class="text-base font-bold text-center bg-transparent w-16 focus:outline-none border-b border-morandi-accent">
+                            <input v-model="flightBack.arrivalTime" type="text" class="text-xs text-morandi-muted text-center bg-transparent w-16 focus:outline-none mt-1">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Day 選擇器 -->
+                <div class="flex space-x-2 overflow-x-auto pb-1">
+                    <button v-for="day in days" :key="day.id" 
+                        @click="selectedDay = day.id"
+                        :class="selectedDay === day.id ? 'bg-morandi-primary text-white shadow-md' : 'bg-white text-morandi-dark border border-morandi-accent'"
+                        class="px-4 py-2 rounded-xl text-sm font-medium transition whitespace-nowrap">
+                        {{ day.name }}
+                    </button>
+                </div>
+
+                <!-- 新增行程表單 -->
+                <div class="bg-morandi-card p-4 rounded-2xl shadow-sm border border-morandi-accent">
+                    <h3 class="font-bold text-morandi-dark text-xs uppercase tracking-wider mb-2">新增行程至 {{ selectedDay.toUpperCase() }}</h3>
+                    <div class="space-y-2">
+                        <input v-model="newItinerary.time" type="text" placeholder="時間 (例: 14:00)" class="w-full text-xs bg-morandi-bg border border-morandi-accent px-3 py-2 rounded-xl focus:outline-none focus:border-morandi-primary">
+                        <input v-model="newItinerary.title" type="text" placeholder="行程標題" class="w-full text-xs bg-morandi-bg border border-morandi-accent px-3 py-2 rounded-xl focus:outline-none focus:border-morandi-primary">
+                        <input v-model="newItinerary.location" type="text" placeholder="地點名稱 (用於導航)" class="w-full text-xs bg-morandi-bg border border-morandi-accent px-3 py-2 rounded-xl focus:outline-none focus:border-morandi-primary">
+                        <button @click="addItinerary" class="w-full bg-morandi-primary text-white py-2 rounded-xl text-xs font-medium shadow hover:bg-slate-700 transition">
+                            <i class="fa-solid fa-plus mr-1"></i> 加入行程
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 行程列表 -->
+                <div class="space-y-3">
+                    <div v-for="(item, index) in itineraries[selectedDay]" :key="index" 
+                        class="bg-morandi-card p-4 rounded-2xl shadow-sm border border-morandi-accent flex items-start justify-between">
+                        <div class="flex items-start space-x-3 flex-1">
+                            <div class="bg-morandi-bg text-morandi-primary font-bold text-xs px-2.5 py-2 rounded-xl text-center min-w-[50px]">
+                                {{ item.time }}
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-morandi-dark text-sm">{{ item.title }}</h3>
+                                <p class="text-xs text-morandi-muted mt-0.5"><i class="fa-solid fa-location-dot mr-1 text-morandi-primary"></i>{{ item.location }}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <a :href="'https://maps.google.com/?q=' + encodeURIComponent(item.location)" target="_blank" class="bg-morandi-bg hover:bg-morandi-primary hover:text-white text-morandi-primary w-9 h-9 rounded-xl flex items-center justify-center transition text-sm">
+                                <i class="fa-solid fa-diamond-turn-right"></i>
+                            </a>
+                            <button @click="removeItinerary(selectedDay, index)" class="text-morandi-muted hover:text-red-500 w-8 h-8 rounded-xl flex items-center justify-center transition text-xs">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. 地圖 Tab -->
+            <div v-if="currentTab === 'map'" class="p-4 h-full flex flex-col">
+                <div class="bg-morandi-card rounded-2xl shadow-sm border border-morandi-accent flex-1 flex flex-col items-center justify-center p-6 text-center min-h-[400px]">
+                    <div class="w-16 h-16 bg-morandi-bg text-morandi-primary rounded-full flex items-center justify-center text-2xl mb-4 shadow-inner">
+                        <i class="fa-solid fa-map-location-dot"></i>
+                    </div>
+                    <h3 class="font-bold text-morandi-dark text-base mb-1">即時互動地圖</h3>
+                    <p class="text-xs text-morandi-muted mb-6">點擊下方按鈕即可快速開啟 Google 規劃路線。</p>
+                    <a href="https://maps.google.com/?q=Taipei" target="_blank" class="bg-morandi-primary text-white px-6 py-3 rounded-xl text-sm font-medium shadow-md hover:bg-slate-700 transition">
+                        <i class="fa-solid fa-location-arrow mr-2"></i>開啟 Google Maps 導航
+                    </a>
+                </div>
+            </div>
+
+            <!-- 3. 購物清單 Tab -->
+            <div v-if="currentTab === 'shopping'" class="p-4 space-y-3">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="font-bold text-morandi-dark text-sm">購物清單</h3>
+                    <span class="text-xs text-morandi-muted">已選 {{ checkedCount }} / {{ shoppingList.length }}</span>
+                </div>
+
+                <div class="bg-morandi-card p-3 rounded-2xl shadow-sm border border-morandi-accent flex space-x-2">
+                    <input v-model="newShoppingItem" type="text" placeholder="新增想買的手信/物品..." class="flex-1 text-xs bg-morandi-bg border border-morandi-accent px-3 py-2 rounded-xl focus:outline-none focus:border-morandi-primary">
+                    <button @click="addShoppingItem" class="bg-morandi-primary text-white px-4 py-2 rounded-xl text-xs font-medium shadow hover:bg-slate-700 transition">
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
+                </div>
+                
+                <div class="space-y-2">
+                    <div v-for="(item, index) in shoppingList" :key="index" 
+                        class="bg-morandi-card p-3.5 rounded-xl shadow-sm border border-morandi-accent flex items-center justify-between transition">
+                        <div @click="item.checked = !item.checked" class="flex items-center space-x-3 flex-1 cursor-pointer">
+                            <div :class="item.checked ? 'bg-morandi-primary border-morandi-primary text-white' : 'border-morandi-secondary'" 
+                                class="w-5 h-5 rounded-md border flex items-center justify-center text-xs transition">
+                                <i v-if="item.checked" class="fa-solid fa-check"></i>
+                            </div>
+                            <span :class="item.checked ? 'line-through text-morandi-muted' : 'text-morandi-dark'" class="text-sm font-medium">
+                                {{ item.name }}
+                            </span>
+                        </div>
+                        <button @click="removeShoppingItem(index)" class="text-morandi-muted hover:text-red-500 text-xs px-2">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. 周邊地點 Tab -->
+            <div v-if="currentTab === 'nearby'" class="p-4 space-y-3">
+                <div class="bg-morandi-primary text-white p-4 rounded-2xl shadow-sm mb-4">
+                    <p class="text-xs opacity-80">目前主地點：</p>
+                    <input v-model="baseLocation" type="text" class="font-bold text-base bg-transparent text-white w-full focus:outline-none border-b border-white/30 mt-1">
+                </div>
+
+                <h3 class="font-bold text-morandi-dark text-sm mb-2">附近推薦精選</h3>
+                
+                <div class="space-y-3">
+                    <div v-for="(place, index) in nearbyPlaces" :key="index" class="bg-morandi-card p-4 rounded-2xl shadow-sm border border-morandi-accent flex items-center justify-between">
+                        <div>
+                            <span class="text-[10px] bg-morandi-bg text-morandi-primary px-2 py-0.5 rounded-md font-bold">{{ place.type }}</span>
+                            <h4 class="font-bold text-morandi-dark text-sm mt-1">{{ place.name }}</h4>
+                            <p class="text-xs text-morandi-muted mt-0.5"><i class="fa-solid fa-star text-amber-400 mr-1"></i>{{ place.rating }} · {{ place.distance }}</p>
+                        </div>
+                        <a :href="'https://maps.google.com/?q=' + encodeURIComponent(place.name + ' ' + baseLocation)" target="_blank" class="bg-morandi-bg text-morandi-primary hover:bg-morandi-primary hover:text-white w-9 h-9 rounded-xl flex items-center justify-center transition text-sm">
+                            <i class="fa-solid fa-diamond-turn-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 天氣專區 -->
+            <div v-if="currentTab === 'weather'" class="p-4 space-y-4">
+                <div class="bg-morandi-card p-6 rounded-2xl shadow-sm border border-morandi-accent text-center space-y-4">
+                    <span class="text-xs font-bold text-morandi-primary bg-morandi-bg px-3 py-1 rounded-full">即時氣象連線</span>
+                    
+                    <div class="flex space-x-2">
+                        <input v-model="weatherCity" type="text" placeholder="輸入城市 (例如: Taipei)" class="flex-1 text-xs bg-morandi-bg border border-morandi-accent px-3 py-2 rounded-xl focus:outline-none focus:border-morandi-primary text-center font-bold">
+                        <button @click="fetchWeather" class="bg-morandi-primary text-white px-4 py-2 rounded-xl text-xs font-medium shadow hover:bg-slate-700 transition">
+                            查詢
+                        </button>
+                    </div>
+
+                    <div class="my-4">
+                        <i class="fa-solid fa-cloud-sun text-5xl text-morandi-primary"></i>
+                        <h2 class="text-3xl font-bold text-morandi-dark mt-2">{{ currentWeather.temp !== null ? currentWeather.temp + '°C' : '--' }}</h2>
+                        <p class="text-xs text-morandi-muted mt-1">{{ currentWeather.condition || '請點擊查詢現實天氣' }}</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-2 pt-4 border-t border-morandi-accent text-xs text-morandi-muted">
+                        <div><p class="font-bold text-morandi-dark">查詢地點</p><p>{{ weatherCity }}</p></div>
+                        <div><p class="font-bold text-morandi-dark">更新時間</p><p>即時現實同步</p></div>
+                    </div>
+                </div>
+                <button @click="currentTab = 'itinerary'" class="w-full bg-morandi-primary text-white py-3 rounded-xl text-sm font-medium shadow-md">
+                    返回行程表
+                </button>
+            </div>
+
+        </div>
+
+        <!-- 底部導航列 (Tab Bar) -->
+        <div class="absolute bottom-0 left-0 right-0 bg-morandi-card border-t border-morandi-accent px-4 py-2 flex justify-around items-center shadow-lg">
+            <button @click="currentTab = 'itinerary'" :class="currentTab === 'itinerary' ? 'text-morandi-primary' : 'text-morandi-muted'" class="flex flex-col items-center space-y-1 transition">
+                <i class="fa-solid fa-calendar-days text-base"></i>
+                <span class="text-[10px] font-medium">行程</span>
+            </button>
+            <button @click="currentTab = 'map'" :class="currentTab === 'map' ? 'text-morandi-primary' : 'text-morandi-muted'" class="flex flex-col items-center space-y-1 transition">
+                <i class="fa-solid fa-map text-base"></i>
+                <span class="text-[10px] font-medium">地圖</span>
+            </button>
+            <button @click="currentTab = 'shopping'" :class="currentTab === 'shopping' ? 'text-morandi-primary' : 'text-morandi-muted'" class="flex flex-col items-center space-y-1 transition">
+                <i class="fa-solid fa-bag-shopping text-base"></i>
+                <span class="text-[10px] font-medium">購物</span>
+            </button>
+            <button @click="currentTab = 'nearby'" :class="currentTab === 'nearby' ? 'text-morandi-primary' : 'text-morandi-muted'" class="flex flex-col items-center space-y-1 transition">
+                <i class="fa-solid fa-compass text-base"></i>
+                <span class="text-[10px] font-medium">周邊</span>
+            </button>
+        </div>
+
+    </div>
+
+    <!-- Vue 智慧邏輯 -->
+    <script>
+        const { createApp, ref, reactive, computed, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                const currentTab = ref('itinerary');
+                const selectedDay = ref('day1');
+                
+                const tripTitle = ref('Taiwan Trip');
+                const tripDate = ref('2026.11.01 - 11.04');
+                const baseLocation = ref('台北西門町意舍酒店');
+
+                const flightOut = reactive({
+                    no: 'BR 872',
+                    from: 'HKG',
+                    departureTime: '10:00',
+                    to: 'TPE',
+                    arrivalTime: '11:50'
+                });
+
+                const flightBack = reactive({
+                    no: 'BR 891',
+                    from: 'TPE',
+                    departureTime: '18:00',
+                    to: 'HKG',
+                    arrivalTime: '20:00'
+                });
+
+                const days = [
+                    { id: 'day1', name: 'Day 1' },
+                    { id: 'day2', name: 'Day 2' },
+                    { id: 'day3', name: 'Day 3' }
+                ];
+
+                const itineraries = reactive({
+                    day1: [
+                        { time: '12:30', title: '抵達桃園機場 & 乘搭機場捷運', location: '桃園機場' },
+                        { time: '14:00', title: '酒店 Check-in', location: '西門町' }
+                    ],
+                    day2: [{ time: '10:00', title: '九份老街芋圓', location: '九份老街' }],
+                    day3: [{ time: '11:00', title: '永康街牛肉麵', location: '永康街' }]
+                });
+
+                const newItinerary = reactive({ time: '', title: '', location: '' });
+
+                const addItinerary = () => {
+                    if (!newItinerary.time || !newItinerary.title || !newItinerary.location) {
+                        alert('請填寫完整資訊！');
+                        return;
+                    }
+                    itineraries[selectedDay.value].push({ ...newItinerary });
+                    newItinerary.time = '';
+                    newItinerary.title = '';
+                    newItinerary.location = '';
+                };
+
+                const removeItinerary = (day, index) => {
+                    itineraries[day].splice(index, 1);
+                };
+
+                const weatherCity = ref('Taipei');
+                const currentWeather = reactive({
+                    temp: null,
+                    condition: '載入現實天氣中...'
+                });
+
+                const fetchWeather = async () => {
+                    try {
+                        currentWeather.condition = '連線現實氣象中...';
+                        const res = await fetch(`https://wttr.in/${encodeURIComponent(weatherCity.value)}?format=j1`);
+                        const data = await res.json();
+                        const current = data.current_condition[0];
+                        currentWeather.temp = current.temp_C;
+                        currentWeather.condition = current.weatherDesc[0].value;
+                    } catch (e) {
+                        currentWeather.condition = '無法取得即時天氣';
+                    }
+                };
+
+                onMounted(() => {
+                    fetchWeather();
+                });
+
+                const shoppingList = ref([
+                    { name: '佳德鳳梨酥 (伴手禮)', checked: false },
+                    { name: '台灣茶葉 (烏龍茶)', checked: false }
+                ]);
+                const newShoppingItem = ref('');
+                const addShoppingItem = () => {
+                    if (!newShoppingItem.value.trim()) return;
+                    shoppingList.value.push({ name: newShoppingItem.value, checked: false });
+                    newShoppingItem.value = '';
+                };
+                const removeShoppingItem = (index) => shoppingList.value.splice(index, 1);
+                const checkedCount = computed(() => shoppingList.value.filter(i => i.checked).length);
+
+                const nearbyPlaces = ref([
+                    { name: '蜂大咖啡', type: '咖啡', rating: '4.3', distance: '步行 3 分鐘' },
+                    { name: '50嵐', type: '飲品', rating: '4.5', distance: '步行 1 分鐘' },
+                    { name: '西門町商圈', type: '購物', rating: '4.4', distance: '步行 2 分鐘' }
+                ]);
+
+                return {
+                    currentTab,
+                    selectedDay,
+                    tripTitle,
+                    tripDate,
+                    baseLocation,
+                    flightOut,
+                    flightBack,
+                    days,
+                    itineraries,
+                    newItinerary,
+                    addItinerary,
+                    removeItinerary,
+                    weatherCity,
+                    currentWeather,
+                    fetchWeather,
+                    shoppingList,
+                    newShoppingItem,
+                    addShoppingItem,
+                    removeShoppingItem,
+                    checkedCount,
+                    nearbyPlaces
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
